@@ -1,0 +1,382 @@
+---
+title: "TS2"
+author: "Juan Pablo Cueva"
+date: "2022-11-08"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(timeSeries)
+library(nortest)
+library(xts)
+library(tseries)
+library(TSA)
+library(forecast)
+```
+
+# CONELDO
+El INEGI, publica el consumo de energía eléctrica doméstica total en miles de millones de wat-
+ts/hora en el país. Se extrajo de manera mensual el consumo desde enero 2009 hasta diciembre
+2017, reportando los siguientes valores
+```{r}
+CONELDO <- c(2861, 2833, 2686, 2798, 3123, 3232, 3377, 3545, 3558,
+             3275, 3079, 2792, 2825, 2769, 2655, 2735, 2996, 3282,
+             3594, 3544, 3633, 3422, 3220, 2859, 2998, 3062, 2907,
+             3012, 3349, 3537, 3688, 3632, 3792, 3608, 3274, 3049,
+             2999, 2990, 2983, 3068, 3279, 3440, 3636, 3670, 3835,
+             3605, 3436, 3126, 3126, 3120, 2905, 2992, 3272, 3524,
+             3732, 3807, 3793, 3631, 3481, 3203, 3230, 3176, 3005,
+             3119, 3382, 3543, 3820, 3985, 3950, 3743, 3512, 3211,
+             3229, 3212, 3043, 3188, 3483, 3678, 3896, 4142, 4190,
+             4063, 3847, 3482, 3415, 3330, 3063, 3284, 3677, 3964,
+             4211, 4296, 4310, 4142, 3858, 3591, 3371, 3331, 3297,
+             3396, 3753, 3967, 4322, 4341, 4398, 4213, 3867, 3509)
+
+coneldo.ts = ts(CONELDO, start = c(2009,1) , frequency = 12)
+plot(coneldo.ts)
+```
+
+# Pasajeros aéreos
+La base Air Passengers hace referencia al número de personas (en miles) que viajan mensualmente
+en una cierta aerolínea internacional de pasajeros durante el periodo de enero de 1949 a diciembre
+de 1960.
+Debido a la gran importancia histórica y que es de gran utilidad para ilustrar los conceptos de
+la exploración de los datos de series de tiempo, esta base se encuentra precargada en R, sólo será
+necesario invocarla con el comando para poder utilizarla, AirPassengers.
+```{r}
+ap.ts <- AirPassengers
+plot(ap.ts)
+```
+
+
+## 1. Considerando la serie de consumo de energía eléctrica y pasajeros de aerolínea.
+### •¿Que descomposición (aditiva/multiplicativa) consideras que ajusta mejor a cada serie?
+### •Realice con ayuda de R la descomposición de la serie identificando los tres componentes de manera gráfica
+
+```{r}
+da_coneldo <- decompose(coneldo.ts,type = "additive")
+plot(da_coneldo)
+
+dm_coneldo <- decompose(coneldo.ts,type = "multiplicative")
+plot(dm_coneldo)
+```
+```{r}
+da_ap <- decompose(ap.ts,type = "additive")
+plot(da_ap)
+dm_ap <- decompose(ap.ts,type = "multiplicative")
+plot(dm_ap)
+```
+
+
+### •¿Qué puedes concluir sobre la tendencia, periodicidad y aleatoriedad de la serie?
+
+#### CONELDO
+\
+Tendencia   : La tendencia es creciente
+```{r}
+par(mfrow=c(1,1))
+t_conledo = da_coneldo$trend
+plot(t_conledo)
+```
+\
+Periodicidad: Tiene una periodicidad de 12 meses.
+```{r}
+s_coneldo = da_coneldo$seasonal
+plot(s_coneldo)
+```
+\
+Aleatoreidad: Tiene menos cantidad de error en comparación a la descomposición multiplicativa
+```{r}
+a_coneldo = da_coneldo$random
+plot(a_coneldo)
+```
+
+#### Pasajeros 
+\
+Tendencia   : Creciente, un poco más "Lineal" que CONELDO
+```{r}
+t_pasajeros = dm_ap$trend
+plot(t_pasajeros)
+```
+\
+Periodicidad: Presenta una periodicidad anual (12 meses)
+```{r}
+p_pasajeros = dm_ap$seasonal
+plot(p_pasajeros)
+```
+\
+Aleatoreidad: Presenta una mayor aleatoridad al inicio y al final de la serie
+```{r}
+a_pasajeros = dm_ap$random
+plot(a_pasajeros)
+```
+
+
+
+### •¿Consideras que las series son estacionarias?
+Coneldo se consideraría que sí.
+Mientras Pasajeros no.
+### •Con los tres componentes de la serie realicé las operaciones necesarias, dependiendo del modelo elegido, para volver a obtener $x_t$ .
+Para obtener $x_t$ para CONELDO hacemos: $x_t=m_t+s_t+\epsilon t$
+```{r}
+xtconeldo = t_conledo + s_coneldo + a_coneldo
+plot(xtconeldo)
+```
+Para obtener PASAJEROS hacemos: $x_t=mt*st+\epsilon t$
+```{r}
+xtpasajeros = t_pasajeros*p_pasajeros+ a_pasajeros
+plot(xtpasajeros)
+```
+
+
+
+### •Calcula sus autocorrelaciones, ¿Puedes asumir para cada serie que los datos se encuentran autocorrelacionados? 
+#### CONELDO
+```{r}
+acf(coneldo.ts)
+```
+En la gráfica podemos notar que no todas las observaciones están correlacionadas.
+Recordando que es el consumo de energía de 2009 a 2017 en el país. Y además, como se mencionó anteriormente, el consumo de energía es más alto a mitad de cada año, y conforme avanza el tiempo éste comportamiento se mantiene
+
+#### Pasajeros
+```{r}
+acf(ap.ts)
+```
+En la gráfica podemos ver que las observaciones están altamente correlacionadas entre sí. Recordando que la información corresponde al número de pasajeros que vuelan, entre 1949 y 1960.
+
+### ¿Por qué crees que el autocorrelograma sigue ese patrón?
+#### CONELDO
+Porque conforme avanza el tiempo, no avanza el consumo de energía eléctrica en la misma propoción,(es decir no hay una proporcionalidad entre las dos variables (conforme crece una variable no crece de igual manera la otra) dado que a mitad de año se consume más energia que en las otras épocas del año.
+
+#### Pasajeros
+Porque conforme avanza el tiempo, incrementa el número de pasajeros, es decir, conforme crece una variables también crece la otra.
+
+## 2.Para ambas series realiza con ayuda de R.
+### •Realiza las siguientes suavizaciones:
+#### • Suavización de promedios móviles simple (PS) de orden 2 y 10.
+##### CONELDO
+```{r}
+plot(coneldo.ts)
+cmed_simp_2 = filter(coneldo.ts, rep(1/2, 2), sides=1)
+cmed_simp10 = filter(coneldo.ts, rep(1/10, 10), sides=1)
+lines(cmed_simp_2, col='red')
+lines(cmed_simp10, col='blue')
+```
+
+##### PASAJEROS
+```{r}
+plot(ap.ts)
+pmed_simp_2 = filter(ap.ts, rep(1/2, 2), sides=1)
+pmed_simp10 = filter(ap.ts, rep(1/10, 10), sides=1)
+lines(pmed_simp_2, col='red')
+lines(pmed_simp10, col='blue')
+```
+
+#### • Suavización de promedios móviles ponderados (PPM) de orden 4 con los pesos $(0.5, 0.3, 0.2, 0.1)$ para $(xt , xt-1 , xt-2 , xt-3 )$ y otra modelo (PPM) de orden 12 seleccionando ustedes mismos los pesos y mencionado el porque de esos pesos. 
+##### CONELDO
+```{r}
+plot(coneldo.ts, main="Orden 4")
+cPPM4 = filter(coneldo.ts, c(0.5, 0.3, 0.2, 0.1), sides=1)
+lines( cPPM4, col = 'blue')
+```
+```{r}
+plot(coneldo.ts, main="Orden 12")
+cPPM4 = filter(coneldo.ts, c(0.05,0.05,0.07,0.09,0.01,0.08,0.3,0.07,0.06,0.08,0.04,0.1), sides=1)
+lines(cPPM4, col = 'red')
+```
+
+####Justificación
+
+###### PASAJEROS
+```{r}
+plot(ap.ts, main="Orden 4")
+pPPM4 = filter(ap.ts, c(0.5, 0.3, 0.2, 0.1), sides=1)
+lines( pPPM4, col = 'magenta')
+```
+```{r}
+plot(ap.ts, main="Orden 12")
+pPPM4 = filter(ap.ts, c(0.05,0.05,0.07,0.09,0.01,0.08,0.3,0.07,0.06,0.08,0.04,0.1), sides=1)
+lines( pPPM4, col = 'red')
+```
+
+####Justificación
+
+#### • Suavización de promedios móviles simple centrado (PS) de orden 2 y 10.
+##### CONELDO
+```{r}
+plot(coneldo.ts, main="Orden2")
+cmed_simp_2 = filter(coneldo.ts, rep(1/2, 2), sides=1)
+cmed_simp10 = filter(coneldo.ts, rep(1/10, 10), sides=1)
+lines(cmed_simp_2, col='red')
+lines(cmed_simp10, col='blue')
+```
+
+##### PASAJEROS
+```{r}
+plot(ap.ts, main="Orden 2")
+pmed_simp_2 = filter(ap.ts, rep(1/2, 2), sides=1)
+pmed_simp10 = filter(ap.ts, rep(1/10, 10), sides=1)
+lines(pmed_simp_2, col='red')
+lines(pmed_simp10, col='blue')
+```
+
+# CONELDO
+```{r}
+plot(coneldo.ts, main="Orden 10")
+cmed_simp_2 = filter(coneldo.ts, rep(1/2, 2), sides=1)
+cmed_simp10 = filter(coneldo.ts, rep(1/10, 10), sides=1)
+lines(cmed_simp_2, col='red')
+lines(cmed_simp10, col='blue')
+```
+
+
+# PASAJEROS
+```{r}
+plot(ap.ts, main="Orden 10")
+pmed_simp_2 = filter(ap.ts, rep(1/2, 2), sides=1)
+pmed_simp10 = filter(ap.ts, rep(1/10, 10), sides=1)
+lines(pmed_simp_2, col='red')
+lines(pmed_simp10, col='blue')
+```
+
+#### • Suavización exponencial simple con $\alpha = 0.01, \alpha = 0.5, \alpha = 0.99$, ¿Cuál es el papel de $\alpha$ en la estimación de valores pronostico? 
+##### CONELDO
+$\alpha = 0.01$
+```{r}
+cSE1 = ses(coneldo.ts, alpha=0.01)
+cSE1$fitted
+plot(coneldo.ts, type='l', "alpha=0.01")
+lines(cSE1$fitted, col='magenta')
+```
+$\alpha = 0.5$
+```{r}
+cSE2 = ses(coneldo.ts, alpha=0.5)
+cSE2$fitted
+plot(ap.ts, type='l', main="alpha=0.5")
+lines(cSE2$fitted, col='blue')
+```
+
+$\alpha = 0.99$
+```{r}
+cSE3 = ses(coneldo.ts, alpha=0.99)
+cSE3$fitted
+plot(ap.ts, type='l', main="alpha=0.99")
+lines(cSE3$fitted, col='green')
+```
+
+#     PASAJEROS
+$\alpha = 0.01$
+```{r}
+pSE1 = ses(ap.ts, alpha=0.01)
+pSE1$fitted
+plot(ap.ts, type='l', main="alpha=0.01")
+lines(pSE1$fitted, col='magenta')
+```
+
+$ \alpha = 0.5$
+```{r}
+pSE2 = ses(ap.ts, alpha=0.5)
+pSE2$fitted
+plot(ap.ts, type='l', main="alpha=0.5")
+lines(pSE2$fitted, col='blue')
+```
+
+$ \alpha = 0.99$
+```{r}
+pSE3 = ses(ap.ts, alpha=0.99)
+pSE3$fitted
+plot(ap.ts, type='l', main="alpha=0.99")
+lines(pSE3$fitted, col='green')
+```
+
+#### • Suavización Holt, con $\alpha = 0.5 y \beta = 0.2, \beta = 0.8$ ¿Cuál es el papel de $\beta$ en la estimación de valores pronostico?
+#####     CONELDO
+$\alpha = 0.5\ y\ \beta = 0.2$
+```{r}
+cH1 = holt(coneldo.ts,alpha = 0.5,beta = 0.2)
+plot(cH1)}
+```
+
+$\beta = 0.8$
+```{r}
+cH2 = holt(coneldo.ts,beta = 0.8)
+plot(cH2)
+```
+
+#####     PASAJEROS
+$\alpha = 0.5\ y\ \beta = 0.2$
+```{r}
+pH1 = holt(ap.ts,alpha = 0.5,beta = 0.2)
+plot(pH1)
+```
+
+$\beta = 0.8$
+```{r}
+pH2 = holt(ap.ts,beta = 0.8)
+plot(pH2)
+```
+
+#### • Suavización Holt Winters, con $\alpha = 0.5, \beta = 0.2, \gamma = 0.8$ y otro modelo Holt-Winters con una selección automática de R.
+##### CONELDO
+Selección Automática
+```{r}
+cHW1 = HoltWinters(coneldo.ts)
+cHW1
+plot(cHW1)
+```
+
+$\alpha = 0.5,\ \beta = 0.2,\ \gamma = 0.8$
+```{r}
+cHW2 = HoltWinters(coneldo.ts,alpha = 0.5,beta = 0.2,gamma = 0.8)
+cHW2
+plot(cHW2)
+```
+
+##### PASAJEROS
+Selección Automática
+```{r}
+pHW1 = HoltWinters(ap.ts)
+pHW1
+plot(pHW1)
+```
+
+
+$\alpha = 0.5,\ \beta = 0.2,\ \gamma = 0.8$
+```{r}
+pHW2 = HoltWinters(ap.ts,alpha = 0.5,beta = 0.2,gamma = 0.8)
+pHW2
+plot(pHW2)
+```
+
+
+### •Cada inciso del punto anterior tiene dos o tres modelo del mismo tipo, así que una misma gráfica muestra los resultados junto con la serie original por modelo.
+### •Para cada inciso de manera visual identifica cual parametrización se ajusta mejor a sus datos y selecciona la parametrización que permiten un mejor pronostico por modelo, explicando brevemente el por qué de su selección.
+### •De los mejores modelos por inciso en una misma gráfica muestra los modelos junto con la serie original.
+### •De los mejores modelos, si el modelo lo permite, realiza un pronostico para todo el siguiente año posterior a su último dato, por ejemplo, si tiene periodicidad mensual y su último dato ocurre en diciembre 2000 ustedes necesitaran predecir de enero 2001 hasta diciembre 2001.
+### •De los mejores modelos de manera visual identifica cual se ajusta mejor a sus datos y selecciona de estos el que crean que es mejor, explicando brevemente el por qué de su selección.
+
+
+
+## 3. Elabora una Suavización de promedios móviles simple centrados de acuerdo a la periodicidad de la serie de tiempo (CONELDO y AirPassagers). Es decir, si los datos tienen una periodicidad mensual selecciona orden 12.
+#### CONELDO
+\
+```{r}
+plot(coneldo.ts)
+coneldo_spmc = filter(coneldo.ts, rep(1/12, 12), sides=1)
+lines(coneldo_spmc, col='red')
+```
+
+#### PASAJEROS
+\
+```{r}
+plot(ap.ts)
+pasajeros_spmc= filter(ap.ts,rep(1/12,12),sides=1)
+lines(pasajeros_spmc,col='red')
+```
+
+
+## 4. De la suavización anterior ahora verifica la tendencia obtenida en la descomposición del primer punto, ¿Se parecen? ¿En que modelo se puede asumir la anterior descomposición puede ser usado como estimador de la tendencia?
