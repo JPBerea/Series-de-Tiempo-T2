@@ -249,7 +249,7 @@ $\alpha = 0.01$
 ```{r}
 cSE1 = ses(coneldo.ts, alpha=0.01)
 cSE1$fitted
-plot(coneldo.ts, type='l', "alpha=0.01")
+plot(coneldo.ts, type='l', main="alpha=0.01")
 lines(cSE1$fitted, col='magenta')
 ```
 $\alpha = 0.5$
@@ -298,7 +298,7 @@ lines(pSE3$fitted, col='green')
 $\alpha = 0.5\ y\ \beta = 0.2$
 ```{r}
 cH1 = holt(coneldo.ts,alpha = 0.5,beta = 0.2)
-plot(cH1)}
+plot(cH1)
 ```
 
 $\beta = 0.8$
